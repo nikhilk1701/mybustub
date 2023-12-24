@@ -13,13 +13,14 @@ auto Trie::Get(std::string_view key) const -> const T * {
   // nullptr. After you find the node, you should use `dynamic_cast` to cast it to `const TrieNodeWithValue<T> *`. If
   // dynamic_cast returns `nullptr`, it means the type of the value is mismatched, and you should return nullptr.
   // Otherwise, return the value.
-  std::shared_ptr<const TrieNode> current = this->root_;
+  if (!root_) {
+    return nullptr;
+  }
+
+  std::shared_ptr<const TrieNode> current = root_;
   auto key_itr = key.begin();
   while (key_itr != key.end()) {
     char key_char = *key_itr;
-    if (current == nullptr) {
-      break;
-    }
     if (current->children_.find(*key_itr) != current->children_.end()) {
       current = current->children_.find(key_char)->second;
     } else {
@@ -33,8 +34,10 @@ auto Trie::Get(std::string_view key) const -> const T * {
     return nullptr;
   }
 
-  const TrieNodeWithValue<T> * val_node = dynamic_cast<const TrieNodeWithValue<T> *>(current.get());
-
+  std::shared_ptr<const TrieNodeWithValue<T>> val_node = std::dynamic_pointer_cast<const TrieNodeWithValue<T>>(current);
+  if (!val_node) {
+    return nullptr;
+  }
   return val_node->value_.get();
 }
 
@@ -67,9 +70,8 @@ auto Trie::Put(std::string_view key, T value) const -> Trie {
     node_stack.push(node);
     if (node->children_.find(key_char) == node->children_.end()) { 
       break;
-    } else {
-      node = node->children_.find(key_char)->second;
     }
+    node = node->children_.find(key_char)->second;
     key_itr++;
   }
 
@@ -105,10 +107,10 @@ auto Trie::Put(std::string_view key, T value) const -> Trie {
     new_node->children_[*rit] = current_node;
     node_stack.pop();
     current_node = std::move(new_node);
+    ++rit;
   }
 
   return Trie{current_node};
-
 }
 
 auto Trie::Remove(std::string_view key) const -> Trie {
@@ -157,9 +159,8 @@ auto Trie::Remove(std::string_view key) const -> Trie {
 
   if (current_node->children_.empty()) {
     return Trie{};
-  } else {
-    return Trie{current_node};
   }
+  return Trie{current_node};
 }
 
 // Below are explicit instantiation of template functions.
