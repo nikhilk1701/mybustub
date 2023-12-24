@@ -112,10 +112,54 @@ auto Trie::Put(std::string_view key, T value) const -> Trie {
 }
 
 auto Trie::Remove(std::string_view key) const -> Trie {
-  throw NotImplementedException("Trie::Remove is not implemented.");
+  // throw NotImplementedException("Trie::Remove is not implemented.");
 
   // You should walk through the trie and remove nodes if necessary. If the node doesn't contain a value any more,
   // you should convert it to `TrieNode`. If a node doesn't have children any more, you should remove it.
+  
+  if (!root_) {
+    return Trie{};
+  }
+
+  auto it = key.begin();
+  std::shared_ptr<const TrieNode> current_node = root_;
+  std::stack<std::shared_ptr<const TrieNode>> node_stack;
+
+  while (it != key.end()) {
+    auto child = current_node->children_.find(*it);
+    if (child == current_node->children_.end()) {
+      // if the next node in the path doesn't exist
+      break;
+    }
+    node_stack.push(current_node);
+    current_node = child->second;
+    ++it;
+  }
+
+  if (it != key.end() || !current_node->is_value_node_) {
+    return Trie{root_};
+  }
+
+  // create a TrieNode from TrieNodeWithValue, dropping the shared_ptr reference to value
+  current_node = std::make_shared<const TrieNode>(current_node->children_);
+
+  for (auto rit = key.rbegin(); rit != key.rend(); ++rit) {
+    auto parent = node_stack.top()->Clone();
+    if (current_node->children_.empty() && !current_node->is_value_node_) {
+      parent->children_.erase(*rit);
+    } else {
+      parent->children_[*rit] = current_node;
+    }
+
+    current_node = std::move(parent);
+    node_stack.pop();
+  }
+
+  if (current_node->children_.empty()) {
+    return Trie{};
+  } else {
+    return Trie{current_node};
+  }
 }
 
 // Below are explicit instantiation of template functions.
