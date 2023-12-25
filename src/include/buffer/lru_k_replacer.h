@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <limits>
 #include <list>
 #include <mutex>  // NOLINT
@@ -34,6 +35,18 @@ class LRUKNode {
   [[maybe_unused]] size_t k_;
   [[maybe_unused]] frame_id_t fid_;
   [[maybe_unused]] bool is_evictable_{false};
+
+ public:
+  LRUKNode();
+  LRUKNode(frame_id_t fid, size_t k);
+
+  auto IsEvictable() -> bool;
+  auto GetKRecentAccess(size_t) -> size_t;
+  auto SetEvictable(bool) -> bool;
+  auto RecordAccess(size_t) -> void;
+  auto GetSize() -> size_t;
+  auto GetLeastRecentAccess() -> size_t;
+  auto GetFrameID() -> frame_id_t;
 };
 
 /**
