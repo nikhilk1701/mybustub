@@ -17,6 +17,7 @@
 #include <thread>  // NOLINT
 
 #include "common/channel.h"
+#include "common/config.h"
 #include "storage/disk/disk_manager.h"
 
 namespace bustub {
@@ -72,6 +73,13 @@ class DiskScheduler {
    * return until ~DiskScheduler() is called. At that point you need to make sure that the function does return.
    */
   void StartWorkerThread();
+
+  /**
+    * @brief Forcefully write the page pointed by page_id to the disk.
+    *
+    * @return void
+  */
+  void FlushPage(page_id_t page_id, const char *page_data);
 
   using DiskSchedulerPromise = std::promise<bool>;
 

@@ -44,7 +44,7 @@ void DiskScheduler::Schedule(DiskRequest r) {
 void DiskScheduler::StartWorkerThread() {
   while (true) {
     std::optional<DiskRequest> r = request_queue_.Get();
-    if (r == std::nullopt) {
+    if (!r.has_value()) {
       break;
     }
 
@@ -56,6 +56,10 @@ void DiskScheduler::StartWorkerThread() {
 
     r->callback_.set_value(true);
   }
+}
+
+void DiskScheduler::FlushPage(page_id_t page_id, const char *page_data) {
+  disk_manager_->WritePage(page_id, page_data);
 }
 
 }  // namespace bustub
