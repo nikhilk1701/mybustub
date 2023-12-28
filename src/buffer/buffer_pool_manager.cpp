@@ -11,10 +11,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "buffer/buffer_pool_manager.h"
-#include <future> // NOLINT
+#include <future>  // NOLINT
 #include <iterator>
 #include <memory>
-#include <mutex> // NOLINT
+#include <mutex>  // NOLINT
 
 #include "common/config.h"
 #include "common/exception.h"
@@ -64,13 +64,14 @@ auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
     }
 
     page_table_.erase(pages_[fid].GetPageId());
-    pages_[fid].is_dirty_ = true;
-    pages_[fid].pin_count_ = 0;
-    pages_[fid].ResetMemory();
+
   } else {
     return nullptr;
   }
 
+  pages_[fid].is_dirty_ = false;
+  pages_[fid].pin_count_ = 0;
+  pages_[fid].ResetMemory();
   page_id_t pid = AllocatePage();
   page_table_[pid] = fid;
   pages_[fid].page_id_ = pid;
@@ -141,7 +142,9 @@ auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, [[maybe_unus
   }
 
   frame_id_t fid = page_table_[page_id];
-  pages_[fid].is_dirty_ = is_dirty;
+  if (is_dirty) {
+    pages_[fid].is_dirty_ = is_dirty;
+  }
 
   if (pages_[fid].GetPinCount() <= 0) {
     replacer_->SetEvictable(fid, true);

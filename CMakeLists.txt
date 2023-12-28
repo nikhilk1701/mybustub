@@ -33,7 +33,7 @@ endif()
 # Expected directory structure.
 set(BUSTUB_BUILD_SUPPORT_DIR "${CMAKE_SOURCE_DIR}/build_support")
 set(BUSTUB_CLANG_SEARCH_PATH "/usr/local/bin" "/usr/bin" "/usr/local/opt/llvm/bin" "/usr/local/opt/llvm@14/bin"
-        "/opt/homebrew/opt/llvm@14/bin/")
+        "/opt/homebrew/opt/llvm@14/bin/", "/opt/homebrew/opt/llvm/bin/")
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         if(CMAKE_CXX_COMPILER_VERSION MATCHES "^14.")

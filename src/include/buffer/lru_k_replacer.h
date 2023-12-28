@@ -41,9 +41,9 @@ class LRUKNode {
   LRUKNode(frame_id_t fid, size_t k);
 
   auto IsEvictable() -> bool;
-  auto GetKRecentAccess(size_t) -> size_t;
-  auto SetEvictable(bool) -> bool;
-  auto RecordAccess(size_t) -> void;
+  auto GetKRecentAccess(size_t k) -> size_t;
+  auto SetEvictable(bool set_evictable) -> bool;
+  auto RecordAccess(size_t timestamp) -> void;
   auto GetSize() -> size_t;
   auto GetLeastRecentAccess() -> size_t;
   auto GetFrameID() -> frame_id_t;

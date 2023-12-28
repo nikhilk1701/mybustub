@@ -1,7 +1,7 @@
 #include "primer/trie.h"
+#include <stack>
 #include <string_view>
 #include "common/exception.h"
-#include <stack>
 
 namespace bustub {
 
@@ -50,11 +50,12 @@ auto Trie::Put(std::string_view key, T value) const -> Trie {
   // exists, you should create a new `TrieNodeWithValue`.
 
   if (!root_) {
-
-    std::shared_ptr<const TrieNode> current_node = std::make_shared<const TrieNodeWithValue<T>>(std::make_shared<T>(std::move(value)));
+    std::shared_ptr<const TrieNode> current_node =
+        std::make_shared<const TrieNodeWithValue<T>>(std::make_shared<T>(std::move(value)));
 
     for (auto rit = key.rbegin(); rit != key.rend(); ++rit) {
-      auto new_node = std::make_shared<const TrieNode>(std::map<char, std::shared_ptr<const TrieNode>>({{*rit, current_node}}));
+      auto new_node =
+          std::make_shared<const TrieNode>(std::map<char, std::shared_ptr<const TrieNode>>({{*rit, current_node}}));
       current_node = std::move(new_node);
     }
 
@@ -68,7 +69,7 @@ auto Trie::Put(std::string_view key, T value) const -> Trie {
   while (key_itr != key.end()) {
     char key_char = *key_itr;
     node_stack.push(node);
-    if (node->children_.find(key_char) == node->children_.end()) { 
+    if (node->children_.find(key_char) == node->children_.end()) {
       break;
     }
     node = node->children_.find(key_char)->second;
@@ -78,7 +79,8 @@ auto Trie::Put(std::string_view key, T value) const -> Trie {
   if (key_itr == key.end()) {
     // when key is a substring of the prefix
 
-    std::shared_ptr<const TrieNode> current_node = std::make_shared<const TrieNodeWithValue<T>>(node->children_, std::make_shared<T>(std::move(value)));
+    std::shared_ptr<const TrieNode> current_node =
+        std::make_shared<const TrieNodeWithValue<T>>(node->children_, std::make_shared<T>(std::move(value)));
 
     for (auto rit = key.rbegin(); rit != key.rend(); ++rit) {
       std::shared_ptr<const TrieNode> old_node = node_stack.top();
@@ -93,11 +95,13 @@ auto Trie::Put(std::string_view key, T value) const -> Trie {
 
   // when prefix is a substring of key
   auto rit = key.rbegin();
-  std::shared_ptr<const TrieNode> current_node = std::make_shared<const TrieNodeWithValue<T>>(std::make_shared<T>(std::move(value)));
+  std::shared_ptr<const TrieNode> current_node =
+      std::make_shared<const TrieNodeWithValue<T>>(std::make_shared<T>(std::move(value)));
 
-  while(std::distance(key_itr, rit.base()) > 1) {
-    auto new_node = std::make_shared<const TrieNode>(std::map<char, std::shared_ptr<const TrieNode>>({{*rit, current_node}}));
-    current_node =std::move(new_node);
+  while (std::distance(key_itr, rit.base()) > 1) {
+    auto new_node =
+        std::make_shared<const TrieNode>(std::map<char, std::shared_ptr<const TrieNode>>({{*rit, current_node}}));
+    current_node = std::move(new_node);
     ++rit;
   }
 
@@ -118,7 +122,7 @@ auto Trie::Remove(std::string_view key) const -> Trie {
 
   // You should walk through the trie and remove nodes if necessary. If the node doesn't contain a value any more,
   // you should convert it to `TrieNode`. If a node doesn't have children any more, you should remove it.
-  
+
   if (!root_) {
     return Trie{};
   }

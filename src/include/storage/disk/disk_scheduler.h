@@ -75,10 +75,10 @@ class DiskScheduler {
   void StartWorkerThread();
 
   /**
-    * @brief Forcefully write the page pointed by page_id to the disk.
-    *
-    * @return void
-  */
+   * @brief Forcefully write the page pointed by page_id to the disk.
+   *
+   * @return void
+   */
   void FlushPage(page_id_t page_id, const char *page_data);
 
   using DiskSchedulerPromise = std::promise<bool>;
