@@ -11,10 +11,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "buffer/buffer_pool_manager.h"
-#include <future>
+#include <future> // NOLINT
 #include <iterator>
 #include <memory>
-#include <mutex>
+#include <mutex> // NOLINT
 
 #include "common/config.h"
 #include "common/exception.h"
@@ -46,33 +46,35 @@ BufferPoolManager::BufferPoolManager(size_t pool_size, DiskManager *disk_manager
 
 BufferPoolManager::~BufferPoolManager() { delete[] pages_; }
 
-auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * { 
+auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
   std::scoped_lock scp_latch(latch_);
-  
   frame_id_t fid;
   if (!free_list_.empty()) {
     fid = free_list_.front();
     free_list_.pop_front();
-  } else if(!replacer_->Evict(&fid)) {
+  } else if (replacer_->Evict(&fid)) {
+    if (pages_[fid].IsDirty()) {
+      std::promise<bool> callback = disk_scheduler_->CreatePromise();
+      std::future<bool> callback_ftr = callback.get_future();
+
+      DiskRequest r = DiskRequest{true, pages_[fid].GetData(), pages_[fid].GetPageId(), std::move(callback)};
+      disk_scheduler_->Schedule(std::move(r));
+
+      callback_ftr.get();
+    }
+
+    page_table_.erase(pages_[fid].GetPageId());
+    pages_[fid].is_dirty_ = true;
+    pages_[fid].pin_count_ = 0;
+    pages_[fid].ResetMemory();
+  } else {
     return nullptr;
   }
 
-  if (pages_[fid].IsDirty()) {
-    std::promise<bool> callback = disk_scheduler_->CreatePromise();
-    std::future<bool> callback_ftr = callback.get_future();
-
-    DiskRequest r = DiskRequest{true, pages_[fid].GetData(), pages_[fid].GetPageId(), std::move(callback)};
-    disk_scheduler_->Schedule(std::move(r));
-
-    callback_ftr.get();
-  }
-  
-  page_table_.erase(pages_[fid].GetPageId());
-  pages_[fid].ResetMemory();
   page_id_t pid = AllocatePage();
   page_table_[pid] = fid;
   pages_[fid].page_id_ = pid;
-  pages_[fid].pin_count_++;
+  pages_[fid].pin_count_ = 1;
   replacer_->SetEvictable(fid, false);
   replacer_->RecordAccess(fid);
 
@@ -82,34 +84,42 @@ auto BufferPoolManager::NewPage(page_id_t *page_id) -> Page * {
 
 auto BufferPoolManager::FetchPage(page_id_t page_id, [[maybe_unused]] AccessType access_type) -> Page * {
   std::scoped_lock scp_latch(latch_);
-  
+
   if (page_table_.find(page_id) != page_table_.end()) {
-    return &pages_[page_table_[page_id]];
+    frame_id_t fid = page_table_[page_id];
+    replacer_->RecordAccess(fid);
+    pages_[fid].pin_count_++;
+    replacer_->SetEvictable(fid, false);
+    return &pages_[fid];
   }
-  
+
   frame_id_t fid;
   if (!free_list_.empty()) {
     fid = free_list_.front();
     free_list_.pop_front();
-  } else if(!replacer_->Evict(&fid)) {
+  } else if (replacer_->Evict(&fid)) {
+    if (pages_[fid].IsDirty()) {
+      std::promise<bool> callback = disk_scheduler_->CreatePromise();
+      std::future<bool> callback_ftr = callback.get_future();
+
+      DiskRequest r = DiskRequest{true, pages_[fid].GetData(), pages_[fid].GetPageId(), std::move(callback)};
+      disk_scheduler_->Schedule(std::move(r));
+
+      callback_ftr.get();
+    }
+
+    page_table_.erase(pages_[fid].GetPageId());
+    pages_[fid].is_dirty_ = false;
+    pages_[fid].pin_count_ = 0;
+    pages_[fid].ResetMemory();
+  } else {
     return nullptr;
   }
 
-  if (pages_[fid].IsDirty()) {
-    std::promise<bool> callback = disk_scheduler_->CreatePromise();
-    std::future<bool> callback_ftr = callback.get_future();
-
-    DiskRequest r = DiskRequest{true, pages_[fid].GetData(), pages_[fid].GetPageId(), std::move(callback)};
-    disk_scheduler_->Schedule(std::move(r));
-
-    callback_ftr.get();
-  }
-
-  page_table_.erase(pages_[fid].GetPageId());
-  pages_[fid].ResetMemory();
   page_table_[page_id] = fid;
   pages_[fid].page_id_ = page_id;
-  pages_[fid].pin_count_++;
+  pages_[fid].is_dirty_ = false;
+  pages_[fid].pin_count_ = 1;
   replacer_->SetEvictable(fid, false);
   replacer_->RecordAccess(fid);
 
@@ -127,7 +137,7 @@ auto BufferPoolManager::FetchPage(page_id_t page_id, [[maybe_unused]] AccessType
 auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, [[maybe_unused]] AccessType access_type) -> bool {
   std::scoped_lock scp_latch(latch_);
   if (page_table_.find(page_id) == page_table_.end()) {
-    return  false;
+    return false;
   }
 
   frame_id_t fid = page_table_[page_id];
@@ -145,7 +155,7 @@ auto BufferPoolManager::UnpinPage(page_id_t page_id, bool is_dirty, [[maybe_unus
   return true;
 }
 
-auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool { 
+auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool {
   std::scoped_lock scp_latch(latch_);
   if (page_id == INVALID_PAGE_ID || page_table_.find(page_id) == page_table_.end()) {
     return false;
@@ -153,7 +163,13 @@ auto BufferPoolManager::FlushPage(page_id_t page_id) -> bool {
 
   frame_id_t fid = page_table_[page_id];
 
-  disk_scheduler_->FlushPage(page_id, pages_[fid].GetData());
+  std::promise<bool> callback = disk_scheduler_->CreatePromise();
+  std::future<bool> callback_ftr = callback.get_future();
+
+  DiskRequest r = DiskRequest{true, pages_[fid].GetData(), pages_[fid].GetPageId(), std::move(callback)};
+  disk_scheduler_->Schedule(std::move(r));
+
+  callback_ftr.get();
   pages_[fid].is_dirty_ = false;
   return true;
 }
@@ -165,10 +181,11 @@ void BufferPoolManager::FlushAllPages() {
 }
 
 auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
+  std::scoped_lock scp_latch(latch_);
   if (page_table_.find(page_id) == page_table_.end()) {
     return true;
   }
-  
+
   frame_id_t fid = page_table_[page_id];
 
   if (pages_[fid].pin_count_ > 0) {
@@ -179,6 +196,7 @@ auto BufferPoolManager::DeletePage(page_id_t page_id) -> bool {
   pages_[fid].is_dirty_ = false;
   pages_[fid].pin_count_ = 0;
   pages_[fid].ResetMemory();
+  DeallocatePage(page_id);
 
   replacer_->Remove(fid);
   free_list_.push_back(fid);
