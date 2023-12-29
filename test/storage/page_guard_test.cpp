@@ -44,6 +44,12 @@ TEST(PageGuardTest, SampleTest) {
 
   EXPECT_EQ(0, page0->GetPinCount());
 
+  {
+    auto *page2 = bpm->NewPage(&page_id_temp);
+    page2->RLatch();
+    auto guard2 = ReadPageGuard(bpm.get(), page2);
+  }
+
   // Shutdown the disk manager and remove the temporary file we created.
   disk_manager->ShutDown();
 }
