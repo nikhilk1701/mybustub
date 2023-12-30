@@ -30,7 +30,21 @@ auto BasicPageGuard::operator=(BasicPageGuard &&that) noexcept -> BasicPageGuard
   that.bpm_ = nullptr;
   that.is_dirty_ = false;
 
-  return *this; 
+  return *this;
+}
+
+auto BasicPageGuard::UpgradeRead() -> ReadPageGuard {
+  auto read_pg = ReadPageGuard{bpm_, page_};
+  bpm_ = nullptr;
+  page_ = nullptr;
+  return read_pg;
+}
+
+auto BasicPageGuard::UpgradeWrite() -> WritePageGuard {
+  auto write_pg = WritePageGuard{bpm_, page_};
+  bpm_ = nullptr;
+  page_ = nullptr;
+  return write_pg;
 }
 
 BasicPageGuard::~BasicPageGuard() {
@@ -45,10 +59,10 @@ ReadPageGuard::ReadPageGuard(ReadPageGuard &&that) noexcept {
   that.guard_ = BasicPageGuard{};
 }
 
-auto ReadPageGuard::operator=(ReadPageGuard &&that) noexcept -> ReadPageGuard & { 
+auto ReadPageGuard::operator=(ReadPageGuard &&that) noexcept -> ReadPageGuard & {
   guard_ = std::move(that.guard_);
   that.guard_ = BasicPageGuard{};
-  return *this; 
+  return *this;
 }
 
 void ReadPageGuard::Drop() {
@@ -58,19 +72,17 @@ void ReadPageGuard::Drop() {
   guard_.Drop();
 }
 
-ReadPageGuard::~ReadPageGuard() {
-  Drop();
-}  // NOLINT
+ReadPageGuard::~ReadPageGuard() { Drop(); }  // NOLINT
 
 WritePageGuard::WritePageGuard(WritePageGuard &&that) noexcept {
   guard_ = std::move(that.guard_);
   that.guard_ = BasicPageGuard{};
 }
 
-auto WritePageGuard::operator=(WritePageGuard &&that) noexcept -> WritePageGuard & { 
+auto WritePageGuard::operator=(WritePageGuard &&that) noexcept -> WritePageGuard & {
   guard_ = std::move(that.guard_);
   that.guard_ = BasicPageGuard{};
-  return *this; 
+  return *this;
 }
 
 void WritePageGuard::Drop() {
@@ -80,8 +92,6 @@ void WritePageGuard::Drop() {
   guard_.Drop();
 }
 
-WritePageGuard::~WritePageGuard() {
-  Drop();
-}  // NOLINT
+WritePageGuard::~WritePageGuard() { Drop(); }  // NOLINT
 
 }  // namespace bustub
