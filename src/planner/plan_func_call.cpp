@@ -42,7 +42,8 @@ auto Planner::GetFuncCallFromFactory(const std::string &func_name, std::vector<A
 
   if (func_name == "lower" || func_name == "upper") {
     if (args.size() == 1) {
-      StringExpressionType expr_type = (func_name == "lower")? StringExpressionType::Lower : StringExpressionType::Upper;
+      StringExpressionType expr_type =
+          (func_name == "lower") ? StringExpressionType::Lower : StringExpressionType::Upper;
       std::cout << args[0]->ToString() << std::endl;
       return std::make_shared<StringExpression>(args[0], expr_type);
     }
