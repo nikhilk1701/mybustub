@@ -41,6 +41,12 @@ auto ExtendibleHTableBucketPage<K, V, KC>::Insert(const K &key, const V &value, 
     return false;
   }
 
+  for (uint32_t idx = 0; idx < size_; idx++) {
+    if (cmp(array_[idx].first, key) == 0) {
+      return false;
+    }
+  }
+
   array_[size_] = std::make_pair(key, value);
   size_++;
   return true;
