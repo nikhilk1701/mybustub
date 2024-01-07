@@ -20,6 +20,9 @@ namespace bustub {
 void ExtendibleHTableHeaderPage::Init(uint32_t max_depth) {
   // throw NotImplementedException("ExtendibleHTableHeaderPage is not implemented");
   max_depth_ = max_depth;
+  for (auto &pgid : directory_page_ids_) {
+    pgid = INVALID_PAGE_ID;
+  }
 }
 
 auto ExtendibleHTableHeaderPage::HashToDirectoryIndex(uint32_t hash) const -> uint32_t {
