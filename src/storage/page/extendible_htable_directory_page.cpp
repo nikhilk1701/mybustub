@@ -24,8 +24,8 @@ namespace bustub {
 void ExtendibleHTableDirectoryPage::Init(uint32_t max_depth) {
   // throw NotImplementedException("ExtendibleHTableDirectoryPage is not implemented");
   max_depth_ = max_depth;
-  for (uint64_t idx = 0; idx < HTABLE_DIRECTORY_ARRAY_SIZE; idx++) {
-    bucket_page_ids_[idx] = INVALID_PAGE_ID;
+  for (int &bucket_page_id : bucket_page_ids_) {
+    bucket_page_id = INVALID_PAGE_ID;
   }
 }
 

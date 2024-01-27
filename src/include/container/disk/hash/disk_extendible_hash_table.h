@@ -138,7 +138,7 @@ class DiskExtendibleHashTable {
     uint32_t local_depth = directory->GetLocalDepth(bucket_idx);
     directory->SetBucketPageId(split_idx, split_bucket_page_id);
     directory->SetLocalDepth(split_idx, local_depth);
-    // severe confusion in bucket splitting 
+    // severe confusion in bucket splitting
     // need to fix it
     int idx_diff = 1 << local_depth;
     for (int idx = split_idx - idx_diff; idx >= 0; idx -= idx_diff) {
@@ -155,9 +155,9 @@ class DiskExtendibleHashTable {
       return false;
     }
     int size = bucket->Size();
-    std::vector<std::pair<K, V>> entries;
+    std::vector<std::pair<K, V>> entries(size);
     for (auto i = 0; i < size; ++i) {
-      entries.push_back(bucket->EntryAt(i));
+      entries[i] = bucket->EntryAt(i);
     }
     bucket->Clear();
 
