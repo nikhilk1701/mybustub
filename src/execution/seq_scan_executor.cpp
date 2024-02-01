@@ -24,44 +24,46 @@ namespace bustub {
 
 SeqScanExecutor::SeqScanExecutor(ExecutorContext *exec_ctx, const SeqScanPlanNode *plan) : AbstractExecutor(exec_ctx) { 
     plan_ = plan;
-    table_itr_ =  nullptr;
 }
 
 void SeqScanExecutor::Init() {
     table_oid_t table_oid = plan_->GetTableOid();
     Catalog* catalog = exec_ctx_->GetCatalog();
     TableInfo* table_info = catalog->GetTable(table_oid);
-    TableHeap* table_heap = table_info->table_.get();
-    TableIterator table_itr = table_heap->MakeIterator();
-    table_itr_ = &table_itr;
+    table_heap_ = table_info->table_.get();
+    TableIterator table_itr = table_heap_->MakeIterator();
     // get table metadata?
     // initialize objects to read from table
     // initialize counter 
 
     // throw NotImplementedException("SeqScanExecutor is not implemented"); 
+    while (!table_itr.IsEnd()) {
+        if (table_itr.GetTuple().first.is_deleted_) {
+           ++table_itr;
+           continue;
+        }
+        rids_.push_back(table_itr.GetRID());
+        ++table_itr;
+    }
+
+    rids_iter_ = rids_.begin();
 }
 
 auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {  
 
     // currently working
-    if (table_itr_->IsEnd()) {
+    if (rids_iter_ == rids_.end()) {
         return false;
     }
 
-    TupleMeta tuple_mtd = table_itr_->GetTuple().first;
-    if (tuple_mtd.is_deleted_) {
-        return false;
-    }
-    *tuple = table_itr_->GetTuple().second;
-    *rid = table_itr_->GetRID();
+    *tuple = table_heap_->GetTuple(*rids_iter_).second;
+    *rid = *rids_iter_;
 
     Schema schema = exec_ctx_->GetCatalog()->GetTable(plan_->GetTableOid())->schema_;
 
-    if (plan_->filter_predicate_->Evaluate(tuple, schema).IsNull()) {
-        return false;
-    }
+    // std::cout << tuple->ToString(&schema) << ' ' << schema.ToString() << std::endl;
 
-    table_itr_++;
+    rids_iter_++;
     return true;
 }
 
