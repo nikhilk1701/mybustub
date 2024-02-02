@@ -37,6 +37,10 @@ void SeqScanExecutor::Init() {
     // initialize counter 
 
     // throw NotImplementedException("SeqScanExecutor is not implemented"); 
+    if (plan_->filter_predicate_ != nullptr) {
+        std::cout << plan_->filter_predicate_->ToString() << std::endl;
+        std::cout << plan_->filter_predicate_->GetChildAt(0)->ToString() << " " << plan_->filter_predicate_->GetChildAt(1)->ToString() << std::endl;
+    }
     while (!table_itr.IsEnd()) {
         if (table_itr.GetTuple().first.is_deleted_) {
            ++table_itr;
@@ -52,18 +56,16 @@ void SeqScanExecutor::Init() {
 auto SeqScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {  
 
     // currently working
-    if (rids_iter_ == rids_.end()) {
-        return false;
-    }
+    do {
+        if (rids_iter_ == rids_.end()) {
+            return false;
+        }
 
-    *tuple = table_heap_->GetTuple(*rids_iter_).second;
-    *rid = *rids_iter_;
+        *tuple = table_heap_->GetTuple(*rids_iter_).second;
+        *rid = *rids_iter_;
+        rids_iter_++;
+    } while (plan_->filter_predicate_ != nullptr && !plan_->filter_predicate_->Evaluate(tuple, exec_ctx_->GetCatalog()->GetTable(plan_->GetTableOid())->schema_).GetAs<bool>());
 
-    Schema schema = exec_ctx_->GetCatalog()->GetTable(plan_->GetTableOid())->schema_;
-
-    // std::cout << tuple->ToString(&schema) << ' ' << schema.ToString() << std::endl;
-
-    rids_iter_++;
     return true;
 }
 
