@@ -33,6 +33,10 @@ UpdateExecutor::UpdateExecutor(ExecutorContext *exec_ctx, const UpdatePlanNode *
 void UpdateExecutor::Init() { child_executor_->Init(); }
 
 auto UpdateExecutor::Next(Tuple *tuple, RID *rid) -> bool {
+  if (called_) {
+    return false;
+  }
+
   int32_t n_updates = 0;
 
   Tuple child_tuple{};
@@ -41,7 +45,6 @@ auto UpdateExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   std::vector<IndexInfo*> indexes = exec_ctx_->GetCatalog()->GetTableIndexes(table_info_->name_);
 // Currently working on update executor
   while(child_executor_->Next(&child_tuple, &child_rid)) {
-
     std::vector<Value> updates;
     updates.reserve(child_executor_->GetOutputSchema().GetColumnCount());
     for (const auto &expr : plan_->target_expressions_) {
@@ -67,8 +70,8 @@ auto UpdateExecutor::Next(Tuple *tuple, RID *rid) -> bool {
   ret.reserve(GetOutputSchema().GetColumnCount());
   ret.emplace_back(INTEGER, n_updates);
   *tuple = Tuple{ret, &GetOutputSchema()};
-
-  return n_updates > 0;
+  called_ = true;
+  return true;
 }
 
 }  // namespace bustub

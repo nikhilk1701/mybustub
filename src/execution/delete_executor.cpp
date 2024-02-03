@@ -27,6 +27,10 @@ void DeleteExecutor::Init() {
 }
 
 auto DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool { 
+    if (called_) {
+        return false;
+    }
+
     int32_t n_deletes = 0;
 
     Tuple child_tuple{};
@@ -54,7 +58,7 @@ auto DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
     ret.reserve(GetOutputSchema().GetColumnCount());
     ret.emplace_back(INTEGER, n_deletes);
     *tuple = Tuple{ret, &GetOutputSchema()};
-
-    return n_deletes > 0;
+    called_ = true;
+    return true;
 }
 } // namespace bustub

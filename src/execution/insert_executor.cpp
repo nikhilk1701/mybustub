@@ -48,9 +48,9 @@ auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
     std::vector<IndexInfo*> indexes = catalog->GetTableIndexes(table_name);
 
     Tuple child_tuple{};
-    RID* child_rid = nullptr;
+    RID child_rid{};
 
-    while (child_executor_->Next(&child_tuple, child_rid)) {
+    while (child_executor_->Next(&child_tuple, &child_rid)) {
         auto meta = TupleMeta{.is_deleted_ =  false, .ts_ =  0};   
         std::optional<RID> rid = table_heap_->InsertTuple(meta, child_tuple, exec_ctx_->GetLockManager(), exec_ctx_->GetTransaction(), plan_->GetTableOid());
         if (rid.has_value()) {
@@ -68,7 +68,13 @@ auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
     ret.reserve(GetOutputSchema().GetColumnCount());
     ret.emplace_back(INTEGER, n_insert);
     *tuple = Tuple{ret, &GetOutputSchema()};
-
+    std::cout << tuple->ToString(&GetOutputSchema()) << std::endl;
+    
+    if (!called_ && n_insert == 0) {
+        called_ = true;
+        return true;
+    }
+    called_ = true;
     return n_insert > 0;
 }
 }  // namespace bustub
